@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     OSS_ACCESS_KEY_ID: str = os.getenv("OSS_ACCESS_KEY_ID", "")
     OSS_ACCESS_KEY_SECRET: str = os.getenv("OSS_ACCESS_KEY_SECRET", "")
     OSS_ENDPOINT: str = os.getenv("OSS_ENDPOINT", "oss-cn-beijing.aliyuncs.com")
-    OSS_BUCKET_NAME: str = os.getenv("OSS_BUCKET_NAME", "")
+    OSS_BUCKET_NAME: str = os.getenv("OSS_BUCKET_NAME", "aibuddy-downloader")
     OSS_CDN_DOMAIN: str = os.getenv("OSS_CDN_DOMAIN", "")  # 如果配了CDN，填CDN域名
 
     # ── 用户配额 ──

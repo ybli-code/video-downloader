@@ -61,7 +61,7 @@ SECRET_KEY=vd-prod-secret-2024-aibuddy-change-me
 OSS_ACCESS_KEY_ID=YOUR_OSS_KEY_ID
 OSS_ACCESS_KEY_SECRET=YOUR_OSS_KEY_SECRET
 OSS_ENDPOINT=oss-cn-beijing.aliyuncs.com
-OSS_BUCKET_NAME=video-downloader-aibuddy
+OSS_BUCKET_NAME=aibuddy-downloader
 WORKER_CONCURRENCY=5
 EOF
 echo "  ✓ .env 已创建"
