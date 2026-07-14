@@ -1,0 +1,66 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "视频下载",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/tasks/tasks",
+      "style": {
+        "navigationBarTitleText": "下载任务",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/watermark/watermark",
+      "style": {
+        "navigationBarTitleText": "去除水印",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/about/about",
+      "style": {
+        "navigationBarTitleText": "关于",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "视频下载",
+    "navigationBarBackgroundColor": "#0a0e1a",
+    "backgroundColor": "#0a0e1a",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#5a6378",
+    "selectedColor": "#6c7cff",
+    "backgroundColor": "#0f1420",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "下载",
+        "iconPath": "static/icons/download.png",
+        "selectedIconPath": "static/icons/download-active.png"
+      },
+      {
+        "pagePath": "pages/tasks/tasks",
+        "text": "任务",
+        "iconPath": "static/icons/tasks.png",
+        "selectedIconPath": "static/icons/tasks-active.png"
+      },
+      {
+        "pagePath": "pages/about/about",
+        "text": "关于",
+        "iconPath": "static/icons/about.png",
+        "selectedIconPath": "static/icons/about-active.png"
+      }
+    ]
+  }
+}

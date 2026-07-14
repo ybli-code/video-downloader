@@ -1,0 +1,16 @@
+[Unit]
+Description=Video Downloader API Service
+After=network.target
+
+[Service]
+Type=simple
+User=videodl
+Group=videodl
+WorkingDirectory=/opt/video-downloader
+ExecStart=/opt/video-downloader/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 --timeout 300 --access-logfile - --error-logfile - app:app
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

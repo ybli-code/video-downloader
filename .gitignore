@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+venv/
+downloads/
+*.pem
+*.key
+node_modules/
+dist/
+.DS_Store
