@@ -57,7 +57,7 @@ services:
       OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN:-}
       WORKERS: 4
     ports:
-      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:5050:5050"
     volumes:
       - vd_downloads:/tmp/vd-downloads
 

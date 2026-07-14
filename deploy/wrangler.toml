@@ -2,8 +2,5 @@ name = "video-downloader-api"
 main = "cloudflare-worker.js"
 compatibility_date = "2024-09-01"
 
-# 部署后 URL: https://video-downloader-api.<你的子域>.workers.dev
-# 也可绑定自定义域名 (需在 Cloudflare DNS 管理)
-
 [vars]
-SERVER_ORIGIN = "http://YOUR_SERVER_IP:5000"
+SERVER_ORIGIN = "http://49.233.146.86:5050"

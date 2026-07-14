@@ -183,6 +183,6 @@ SUPPORTED_PLATFORMS = [
 if __name__ == '__main__':
     print("=" * 50)
     print("  视频下载智能体 - 正在启动...")
-    print("  访问地址: http://localhost:5000")
+    print("  访问地址: http://localhost:5050")
     print("=" * 50)
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    app.run(host='0.0.0.0', port=5050, debug=True, threaded=True)

@@ -30,6 +30,7 @@ echo "[3/4] 检查 ffmpeg..."
 if ! command -v ffmpeg &> /dev/null; then
     echo "  [警告] 未找到 ffmpeg，正在安装..."
     apt-get update -qq && apt-get install -y -qq ffmpeg 2>/dev/null || \
+    yum install -y ffmpeg 2>/dev/null || \
     echo "  [警告] ffmpeg 安装失败，去水印功能将不可用"
 fi
 if command -v ffmpeg &> /dev/null; then
@@ -42,7 +43,7 @@ fi
 echo "[4/4] 启动 Web 服务..."
 echo ""
 echo "=================================================="
-echo "  访问地址: http://localhost:5000"
+echo "  访问地址: http://localhost:5050"
 echo "  命令行:   python cli.py <视频链接>"
 echo "=================================================="
 echo ""
