@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  # ── PostgreSQL 数据库 ──
+  db:
+    image: postgres:16-alpine
+    container_name: vd-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: vd
+      POSTGRES_PASSWORD: vd123
+      POSTGRES_DB: videodownloader
+    volumes:
+      - vd_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vd"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis 缓存 + 队列 ──
+  redis:
+    image: redis:7-alpine
+    container_name: vd-redis
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── FastAPI 服务 ──
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: vd-api
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://vd:vd123@db:5432/videodownloader
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-vd-prod-secret-2024-aibuddy}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-oss-cn-beijing.aliyuncs.com}
+      OSS_BUCKET_NAME: ${OSS_BUCKET_NAME:-}
+      OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN:-}
+      WORKERS: 4
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - vd_downloads:/tmp/vd-downloads
+
+  # ── 后台 Worker (视频下载) ──
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.worker
+    container_name: vd-worker
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://vd:vd123@db:5432/videodownloader
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-vd-prod-secret-2024-aibuddy}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-oss-cn-beijing.aliyuncs.com}
+      OSS_BUCKET_NAME: ${OSS_BUCKET_NAME:-}
+      OSS_CDN_DOMAIN: ${OSS_CDN_DOMAIN:-}
+      WORKER_CONCURRENCY: 5
+    volumes:
+      - vd_downloads:/tmp/vd-downloads
+
+volumes:
+  vd_pgdata:
+  vd_downloads:

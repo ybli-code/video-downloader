@@ -1,24 +1,71 @@
 /**
- * API 服务层
+ * API 服务层 v2 - 带 JWT 鉴权
  */
 import config from './config.js'
 
-const { BASE_URL, FILE_BASE_URL } = config
+const { BASE_URL } = config
 
-/**
- * 通用请求
- */
-function request(url, options = {}) {
+// ── Token 管理 ──
+const ACCESS_TOKEN_KEY = 'vd_access_token'
+const REFRESH_TOKEN_KEY = 'vd_refresh_token'
+const USER_INFO_KEY = 'vd_user_info'
+
+function getToken() {
+  return uni.getStorageSync(ACCESS_TOKEN_KEY) || ''
+}
+
+function setTokens(accessToken, refreshToken) {
+  uni.setStorageSync(ACCESS_TOKEN_KEY, accessToken)
+  uni.setStorageSync(REFRESH_TOKEN_KEY, refreshToken)
+}
+
+function clearTokens() {
+  uni.removeStorageSync(ACCESS_TOKEN_KEY)
+  uni.removeStorageSync(REFRESH_TOKEN_KEY)
+  uni.removeStorageSync(USER_INFO_KEY)
+}
+
+function saveUser(user) {
+  uni.setStorageSync(USER_INFO_KEY, JSON.stringify(user))
+}
+
+export function getUser() {
+  const data = uni.getStorageSync(USER_INFO_KEY)
+  return data ? JSON.parse(data) : null
+}
+
+export function isLoggedIn() {
+  return !!getToken()
+}
+
+export function logout() {
+  clearTokens()
+  uni.reLaunch({ url: '/pages/login/login' })
+}
+
+// ── 通用请求 (带鉴权) ──
+async function request(url, options = {}) {
+  const token = getToken()
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.header,
+  }
+  if (token && !options.noAuth) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
   return new Promise((resolve, reject) => {
     uni.request({
       url: BASE_URL + url,
       method: options.method || 'GET',
       data: options.data || {},
-      header: {
-        'Content-Type': 'application/json',
-        ...options.header,
-      },
+      header: headers,
       success(res) {
+        // 401 → 尝试刷新 token
+        if (res.statusCode === 401 && !options.noAuth && !options._retry) {
+          refreshTokenAndRetry(url, options).then(resolve).catch(reject)
+          return
+        }
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)
         } else {
@@ -32,76 +79,111 @@ function request(url, options = {}) {
   })
 }
 
+// ── Token 刷新 ──
+async function refreshTokenAndRetry(url, options) {
+  const refreshToken = uni.getStorageSync(REFRESH_TOKEN_KEY)
+  if (!refreshToken) {
+    logout()
+    return Promise.reject({ error: '请先登录' })
+  }
+
+  try {
+    const res = await new Promise((resolve, reject) => {
+      uni.request({
+        url: BASE_URL + '/auth/refresh',
+        method: 'POST',
+        data: { refresh_token: refreshToken },
+        header: { 'Content-Type': 'application/json' },
+        success: resolve,
+        fail: reject,
+      })
+    })
+
+    if (res.statusCode === 200 && res.data.access_token) {
+      uni.setStorageSync(ACCESS_TOKEN_KEY, res.data.access_token)
+      // 重试原请求
+      return request(url, { ...options, _retry: true })
+    } else {
+      logout()
+      return Promise.reject({ error: '登录已过期' })
+    }
+  } catch (e) {
+    logout()
+    return Promise.reject({ error: '请重新登录' })
+  }
+}
+
 export default {
-  // ── 平台检测 ──
-  detectPlatform(url) {
-    return request('/detect', { method: 'POST', data: { url } })
+  // ── 认证 ──
+  register(username, email, password) {
+    return request('/auth/register', {
+      method: 'POST',
+      data: { username, email, password },
+      noAuth: true,
+    })
   },
 
-  // ── 提交下载 ──
+  login(account, password) {
+    return request('/auth/login', {
+      method: 'POST',
+      data: { account, password },
+      noAuth: true,
+    })
+  },
+
+  getProfile() {
+    return request('/auth/me')
+  },
+
+  // ── 平台检测 (无需登录) ──
+  detectPlatform(url) {
+    return request('/detect', { method: 'POST', data: { url }, noAuth: true })
+  },
+
+  getPlatforms() {
+    return request('/platforms', { noAuth: true })
+  },
+
+  // ── 下载任务 ──
   submitDownload(url) {
     return request('/download', { method: 'POST', data: { url } })
   },
 
-  // ── 获取任务列表 ──
-  getTasks() {
-    return request('/tasks')
+  getTasks(page = 1, size = 20) {
+    return request(`/tasks?page=${page}&size=${size}`)
   },
 
-  // ── 获取单个任务 ──
   getTask(taskId) {
     return request(`/tasks/${taskId}`)
   },
 
-  // ── 删除任务 ──
   deleteTask(taskId) {
     return request(`/tasks/${taskId}`, { method: 'DELETE' })
   },
 
-  // ── 去除水印 ──
-  removeWatermark(taskId, x, y, w, h) {
-    return request(`/tasks/${taskId}/watermark`, {
-      method: 'POST',
-      data: { x, y, w, h },
-    })
+  // ── 下载文件 ──
+  async getDownloadUrl(taskId) {
+    const res = await request(`/download/${taskId}`)
+    return res.url
   },
 
-  // ── 获取平台列表 ──
-  getPlatforms() {
-    return request('/platforms')
-  },
-
-  // ── 获取文件下载 URL ──
-  getFileUrl(taskId) {
-    return `${FILE_BASE_URL}/${taskId}`
-  },
-
-  // ── 下载文件到本地（App 端）──
-  downloadFile(taskId) {
+  async downloadFile(taskId) {
+    const url = await this.getDownloadUrl(taskId)
     return new Promise((resolve, reject) => {
-      const url = this.getFileUrl(taskId)
       // #ifdef APP-PLUS
       uni.downloadFile({
         url,
+        header: { 'Authorization': `Bearer ${getToken()}` },
         success(res) {
           if (res.statusCode === 200) {
-            // 保存到相册
             uni.saveVideoToPhotosAlbum({
               filePath: res.tempFilePath,
-              success() {
-                resolve({ saved: true, path: res.tempFilePath })
-              },
-              fail(err) {
-                resolve({ saved: false, path: res.tempFilePath, error: err.errMsg })
-              },
+              success() { resolve({ saved: true }) },
+              fail(err) { resolve({ saved: false, error: err.errMsg }) },
             })
-          } else {
-            reject({ error: '下载失败' })
-          }
+          } else { reject({ error: '下载失败' }) }
         },
-        fail(err) {
-          reject({ error: err.errMsg })
-        },
+        fail(err) { reject({ error: err.errMsg }) },
       })
       // #endif
 
@@ -112,41 +194,41 @@ export default {
           if (res.statusCode === 200) {
             uni.saveVideoToPhotosAlbum({
               filePath: res.tempFilePath,
-              success() {
-                resolve({ saved: true, path: res.tempFilePath })
-              },
-              fail(err) {
-                resolve({ saved: false, path: res.tempFilePath, error: err.errMsg })
-              },
+              success() { resolve({ saved: true }) },
+              fail(err) { resolve({ saved: false, error: err.errMsg }) },
             })
-          } else {
-            reject({ error: '下载失败' })
-          }
+          } else { reject({ error: '下载失败' }) }
         },
-        fail(err) {
-          reject({ error: err.errMsg })
-        },
+        fail(err) { reject({ error: err.errMsg }) },
       })
       // #endif
 
       // #ifdef H5
-      // H5 直接打开链接
       window.open(url, '_blank')
       resolve({ saved: false, path: url })
       // #endif
     })
   },
 
-  // ── 粘贴板读取 ──
-  async pasteFromClipboard() {
+  // ── 去水印 ──
+  removeWatermark(taskId, x, y, w, h) {
+    return request(`/tasks/${taskId}/watermark`, {
+      method: 'POST',
+      data: { x, y, w, h },
+    })
+  },
+
+  // ── 配额 ──
+  getQuota() {
+    return request('/quota')
+  },
+
+  // ── 粘贴板 ──
+  pasteFromClipboard() {
     return new Promise((resolve) => {
       uni.getClipboardData({
-        success(res) {
-          resolve(res.data || '')
-        },
-        fail() {
-          resolve('')
-        },
+        success(res) { resolve(res.data || '') },
+        fail() { resolve('') },
       })
     })
   },
@@ -156,4 +238,11 @@ export default {
     const icon = type === 'success' ? 'success' : type === 'error' ? 'error' : 'none'
     uni.showToast({ title: message, icon, duration: 2500 })
   },
+
+  // ── Token 工具 ──
+  setTokens,
+  saveUser,
+  getToken,
+  isLoggedIn,
+  logout,
 }

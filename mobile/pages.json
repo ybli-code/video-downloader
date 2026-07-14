@@ -1,6 +1,14 @@
 {
   "pages": [
     {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    },
+    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "视频下载",
@@ -57,7 +65,7 @@
       },
       {
         "pagePath": "pages/about/about",
-        "text": "关于",
+        "text": "我的",
         "iconPath": "static/icons/about.png",
         "selectedIconPath": "static/icons/about-active.png"
       }
